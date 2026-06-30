@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  reverse_proxy:
+    image: nginx:alpine
+    container_name: iartnet_reverse_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"       # HTTP
+      - "443:443"     # HTTPS (Aggiunta necessaria)
+      - "127.0.0.1:8081:8081"   # API
+      - "127.0.0.1:8082:8082"   # CMS
+    volumes:
+      - ${PROXY_CONF_DIR:-./conf.d}:/etc/nginx/conf.d:ro
+      - certbot-webroot:/var/www/certbot
+      - certbot-certs:/etc/letsencrypt  # Typo corretto
+    networks:
+      - iartnet_net
+      - backoffice_network
+      - docker_default
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: iartnet_certbot
+    volumes:
+      - certbot-webroot:/var/www/certbot
+      - certbot-certs:/etc/letsencrypt
+    # Il loop mantiene il container in esecuzione silente e tenta il rinnovo ogni 12 ore
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+networks:
+  iartnet_net:
+    external: true
+  backoffice_network:
+    name: ${BACKOFFICE_NETWORK_NAME:-iartnet_backoffice_default}
+    external: true
+  docker_default:
+    external: true
+
+# Dichiarazione esplicita dei volumi gestiti da Docker
+volumes:
+  certbot-webroot:
+  certbot-certs:

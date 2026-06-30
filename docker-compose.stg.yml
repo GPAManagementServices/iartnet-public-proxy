@@ -1,0 +1,18 @@
+services:
+  reverse_proxy:
+    env_file:
+      - ./env/proxy.stg.env
+    environment:
+      # Evita che envsubst tocchi variabili native Nginx come $host o $http_upgrade.
+      NGINX_ENVSUBST_FILTER: '^IARTNET_'
+    volumes:
+      # Override del vecchio bind ./conf.d:/etc/nginx/conf.d:ro usando lo stesso target.
+      # /etc/nginx/conf.d deve essere scrivibile perche' l'immagine nginx genera qui il file da template.
+      - nginx-generated-conf:/etc/nginx/conf.d
+      - ./conf.d/templates:/etc/nginx/templates:ro
+      - ./conf.d/snippets:/etc/nginx/snippets:ro
+      - certbot-webroot:/var/www/certbot
+      - certbot-certs:/etc/letsencrypt
+
+volumes:
+  nginx-generated-conf:

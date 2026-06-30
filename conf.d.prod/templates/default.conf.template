@@ -1,0 +1,223 @@
+# ==========================================
+# IARTNET reverse proxy generated from template
+# Environment: ${IARTNET_ENV_NAME}
+# ==========================================
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+log_format iartnet_timing '$remote_addr - $time_local '
+                          'host=$host '
+                          'request="$request" '
+                          'status=$status '
+                          'body_bytes_sent=$body_bytes_sent '
+                          'rt=$request_time '
+                          'urt="$upstream_response_time" '
+                          'ustatus="$upstream_status" '
+                          'uaddr="$upstream_addr" '
+                          'uct="$upstream_connect_time" '
+                          'uht="$upstream_header_time" '
+                          'referer="$http_referer" '
+                          'ua="$http_user_agent" '
+                          'xff="$http_x_forwarded_for"';
+
+server {
+    listen 80;
+    server_name ${IARTNET_WWW_REDIRECT_SERVER_NAME};
+
+    access_log /var/log/nginx/access.log iartnet_timing;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        allow all;
+        try_files $uri =404;
+    }
+
+    location / {
+        return 301 https://${IARTNET_FRONTEND_SERVER_NAME_1}$request_uri;
+    }
+}
+
+server {
+    listen 80;
+    server_name ${IARTNET_HTTP_SERVER_NAME_1} ${IARTNET_HTTP_SERVER_NAME_2} ${IARTNET_HTTP_SERVER_NAME_3} ${IARTNET_HTTP_SERVER_NAME_4} ${IARTNET_HTTP_SERVER_NAME_5};
+
+    access_log /var/log/nginx/access.log iartnet_timing;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        allow all;
+        try_files $uri =404;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name ${IARTNET_WWW_REDIRECT_SERVER_NAME};
+
+    ssl_certificate /etc/letsencrypt/live/${IARTNET_CERT_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${IARTNET_CERT_NAME}/privkey.pem;
+
+    access_log /var/log/nginx/access.log iartnet_timing;
+
+    return 301 https://${IARTNET_FRONTEND_SERVER_NAME_1}$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name ${IARTNET_FRONTEND_SERVER_NAME_1} ${IARTNET_FRONTEND_SERVER_NAME_2};
+
+    ssl_certificate /etc/letsencrypt/live/${IARTNET_CERT_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${IARTNET_CERT_NAME}/privkey.pem;
+
+    access_log /var/log/nginx/access.log iartnet_timing;
+
+    resolver 127.0.0.11 ipv6=off valid=10s;
+    set $frontend_upstream iartnet_frontend:3000;
+
+    location / {
+        proxy_pass http://$frontend_upstream;
+        include /etc/nginx/snippets/websocket_headers.conf;
+        include /etc/nginx/snippets/proxy_headers.conf;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name ${IARTNET_INGESTION_SERVER_NAME};
+
+    ssl_certificate /etc/letsencrypt/live/${IARTNET_CERT_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${IARTNET_CERT_NAME}/privkey.pem;
+
+    access_log /var/log/nginx/access.log iartnet_timing;
+
+    include /etc/nginx/snippets/auth_admin.conf;
+
+    client_max_body_size 1G;
+
+    resolver 127.0.0.11 ipv6=off valid=10s;
+    set $api_upstream iartnet_api_nginx:80;
+
+    location ^~ /api/ {
+        auth_basic off;
+
+        include /etc/nginx/snippets/proxy_buffering_api.conf;
+        include /etc/nginx/snippets/proxy_timeouts_upload.conf;
+
+        proxy_pass http://$api_upstream;
+        include /etc/nginx/snippets/proxy_headers.conf;
+    }
+
+    location / {
+        include /etc/nginx/snippets/proxy_buffering_api.conf;
+        include /etc/nginx/snippets/proxy_timeouts_upload.conf;
+
+        proxy_pass http://$api_upstream;
+        include /etc/nginx/snippets/proxy_headers.conf;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name ${IARTNET_CMS_SERVER_NAME};
+
+    ssl_certificate /etc/letsencrypt/live/${IARTNET_CERT_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${IARTNET_CERT_NAME}/privkey.pem;
+
+    access_log /var/log/nginx/access.log iartnet_timing;
+
+    include /etc/nginx/snippets/auth_admin.conf;
+
+    client_max_body_size 100M;
+
+    resolver 127.0.0.11 ipv6=off valid=10s;
+    set $cms_upstream iartnetcms_nginx:80;
+
+    location ^~ /api/ {
+        auth_basic off;
+
+        if ($request_method = OPTIONS) {
+            include /etc/nginx/snippets/cors_api_headers.conf;
+            include /etc/nginx/snippets/options_preflight_tail.conf;
+        }
+
+        include /etc/nginx/snippets/cors_api_headers.conf;
+
+        proxy_pass http://$cms_upstream;
+        include /etc/nginx/snippets/proxy_headers.conf;
+    }
+
+    location ^~ /storage/ {
+        auth_basic off;
+
+        if ($request_method = OPTIONS) {
+            include /etc/nginx/snippets/cors_storage_headers.conf;
+            include /etc/nginx/snippets/options_preflight_tail.conf;
+        }
+
+        include /etc/nginx/snippets/cors_storage_headers.conf;
+
+        proxy_pass http://$cms_upstream;
+        include /etc/nginx/snippets/proxy_headers.conf;
+    }
+
+    location ^~ /curator/ {
+        auth_basic off;
+
+        if ($request_method = OPTIONS) {
+            include /etc/nginx/snippets/cors_storage_headers.conf;
+            include /etc/nginx/snippets/options_preflight_tail.conf;
+        }
+
+        include /etc/nginx/snippets/cors_storage_headers.conf;
+
+        proxy_pass http://$cms_upstream;
+        include /etc/nginx/snippets/proxy_headers.conf;
+    }
+
+    location / {
+        proxy_pass http://$cms_upstream;
+        include /etc/nginx/snippets/proxy_headers.conf;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name ${IARTNET_IIIF_SERVER_NAME};
+
+    ssl_certificate /etc/letsencrypt/live/${IARTNET_CERT_NAME}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${IARTNET_CERT_NAME}/privkey.pem;
+
+    access_log /var/log/nginx/access.log iartnet_timing;
+
+    resolver 127.0.0.11 ipv6=off valid=10s;
+    set $iiif_upstream iartnet_iiif:8182;
+
+    location = /tasks {
+        return 404;
+    }
+
+    location ^~ /tasks/ {
+        return 404;
+    }
+
+    location / {
+        include /etc/nginx/snippets/hide_upstream_cors.conf;
+
+        if ($request_method = OPTIONS) {
+            include /etc/nginx/snippets/cors_iiif_headers.conf;
+            include /etc/nginx/snippets/options_preflight_tail.conf;
+        }
+
+        include /etc/nginx/snippets/cors_iiif_headers.conf;
+
+        proxy_pass http://$iiif_upstream;
+        include /etc/nginx/snippets/proxy_headers.conf;
+    }
+}

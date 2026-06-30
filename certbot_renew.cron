@@ -1,0 +1,1 @@
+0 3 * * * root cd /opt/iartnet_edge/proxy && docker compose run --rm --entrypoint certbot certbot renew --quiet && docker exec iartnet_reverse_proxy nginx -s reload

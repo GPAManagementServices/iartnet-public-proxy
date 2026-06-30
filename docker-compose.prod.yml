@@ -1,0 +1,29 @@
+services:
+  reverse_proxy:
+    env_file:
+      - ./env/proxy.prod.env
+    environment:
+      # Evita che envsubst tocchi variabili native Nginx come $host o $http_upgrade.
+      NGINX_ENVSUBST_FILTER: '^IARTNET_'
+      IARTNET_AUTH_SNIPPET: auth_preview.conf
+    volumes:
+      # Override del vecchio bind ./conf.d:/etc/nginx/conf.d:ro usando lo stesso target.
+      # /etc/nginx/conf.d deve essere scrivibile perche' l'immagine nginx genera qui il file da template.
+      - nginx-generated-conf:/etc/nginx/conf.d
+      - ./conf.d.prod/templates:/etc/nginx/templates:ro
+      - ./conf.d.prod/snippets:/etc/nginx/snippets:ro
+      # File reale fuori repository. Crearlo su PROD prima del deploy PROD.
+      - /etc/iartnet/proxy/.htpasswd:/etc/nginx/.htpasswd:ro
+      - certbot-webroot:/var/www/certbot
+      - certbot-certs:/etc/letsencrypt
+
+volumes:
+  nginx-generated-conf:
+
+# PROD network compatibility:
+# The base compose uses the logical network key backoffice_network.
+# On PROD the real Docker network is iartnet_backoffice_cms_internal.
+networks:
+  backoffice_network:
+    name: iartnet_backoffice_cms_internal
+    external: true

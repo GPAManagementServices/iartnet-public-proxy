@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  compose-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare env files for compose validation
+        run: |
+          cp env/proxy.stg.env.example env/proxy.stg.env
+          cp env/proxy.prod.env.example env/proxy.prod.env
+      - name: Validate Docker Compose files
+        run: |
+          docker compose -f docker-compose.yml config >/dev/null
+          docker compose -f docker-compose.stg.yml config >/dev/null
+          docker compose -f docker-compose.prod.yml config >/dev/null

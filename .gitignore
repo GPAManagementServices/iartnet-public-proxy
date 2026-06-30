@@ -1,0 +1,12 @@
+certs/
+*.pem
+*.key
+*.crt
+.htpasswd
+.htpasswd.*
+*.bak
+*.backup
+*.orig
+.env
+env/proxy.stg.env
+env/proxy.prod.env

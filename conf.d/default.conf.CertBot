@@ -1,0 +1,54 @@
+# ==========================================
+# FRONTEND & ACME CHALLENGE - Porta 80
+# ==========================================
+server {
+    listen 80 default_server;
+    server_name _;
+
+    # Regola ACME inline
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        allow all;
+        try_files $uri =404;
+    }
+
+    location / {
+        proxy_pass http://iartnet_frontend:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# ==========================================
+# API LARAVEL - Porta 8081
+# ==========================================
+server {
+    listen 8081;
+    server_name _;
+
+    location / {
+        proxy_pass http://iartnet_api_nginx:80;
+        proxy_set_header Host $host:$server_port;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+# ==========================================
+# CMS FILAMENT - Porta 8082
+# ==========================================
+server {
+    listen 8082;
+    server_name _;
+
+    location / {
+        proxy_pass http://iartnetcms_nginx:80;
+        proxy_set_header Host $host:$server_port;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

@@ -1,0 +1,43 @@
+publiccodeYmlVersion: "0.2"
+name: iartnet-proxy
+url: "https://github.com/GPAManagementServices/iartnet_proxy"
+softwareVersion: "1.0.0"
+releaseDate: "2026-06-28"
+platforms:
+  - web
+categories:
+  - hosting
+developmentStatus: active
+softwareType: standalone
+description:
+  it:
+    localisedName: IARTNET Reverse Proxy
+    shortDescription: Nginx reverse proxy TLS, routing e Certbot per stack IARTNET.
+    longDescription: >
+      Reverse proxy Docker (Nginx + Certbot) per frontend, CMS, ingestion API
+      e IIIF; template STG/PROD con envsubst.
+  en:
+    localisedName: IARTNET Reverse Proxy
+    shortDescription: Nginx TLS reverse proxy for IARTNET stack.
+legal:
+  license: AGPL-3.0-or-later
+maintenance:
+  type: internal
+  contacts:
+    - name: Accademia di Brera
+      affiliation: Accademia di Brera
+    - name: GPA Management Services
+      email: info@gpams.it
+      affiliation: GPA Management Services
+dependsOn:
+  open:
+    - name: Nginx
+      url: "https://nginx.org"
+    - name: Certbot
+      url: "https://certbot.eff.org"
+it:
+  conforme:
+    - modello-interoperabilita
+  countryExtensionVersion: "0.2"
+  piattaforme:
+    - web
